@@ -16,6 +16,7 @@ router.post('/', verifyToken, async (req, res) => {
     const saved = await newPost.save();
     res.status(201).json(saved);
   } catch (err) {
+    console.error("❌ Create Post Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -26,6 +27,7 @@ router.get('/', async (req, res) => {
     const posts = await Post.find().sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
+    console.error("❌ Get All Posts Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -37,6 +39,7 @@ router.get('/:id', async (req, res) => {
     if (!post) return res.status(404).json({ error: "Post not found" });
     res.json(post);
   } catch (err) {
+    console.error("❌ Get Single Post Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -48,7 +51,12 @@ router.put('/:id', verifyToken, async (req, res) => {
 
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    if (post.authorId !== req.user.uid) {
+    // 🔍 Debugging log
+    console.log("📝 Attempting to edit post:", post._id);
+    console.log("👤 Post Owner:", post.authorId);
+    console.log("🧾 Current User:", req.user.uid);
+
+    if (String(post.authorId) !== String(req.user.uid)) {
       return res.status(403).json({ error: "You can only edit your own posts" });
     }
 
@@ -58,25 +66,26 @@ router.put('/:id', verifyToken, async (req, res) => {
     const updated = await post.save();
     res.json(updated);
   } catch (err) {
+    console.error("❌ Update Post Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ Delete Post (only by owner) — FINAL FIXED VERSION
+// ✅ Delete Post (only by owner)
 router.delete('/:id', verifyToken, async (req, res) => {
   try {
-    const objectId = new mongoose.Types.ObjectId(req.params.id); // ✅ force convert to ObjectId
+    const objectId = new mongoose.Types.ObjectId(req.params.id); // ✅ Convert string to ObjectId
     const post = await Post.findById(objectId);
 
     console.log("🧹 Deleting post:", objectId);
 
     if (!post) return res.status(404).json({ error: "Post not found" });
 
-    if (post.authorId !== req.user.uid) {
+    if (String(post.authorId) !== String(req.user.uid)) {
       return res.status(403).json({ error: "You can only delete your own posts" });
     }
 
-    await Post.findByIdAndDelete(objectId);  // ✅ safer than .remove()
+    await Post.findByIdAndDelete(objectId);
     res.json({ message: "Post deleted" });
   } catch (err) {
     console.error("❌ Delete Error:", err.message);
